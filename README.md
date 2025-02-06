@@ -25,6 +25,7 @@ pip install opencv-python numpy scikit-image
 ## 使用方法
 
 ### 基本的な使用例
+４２５行目以降
 
 ```python
 from compare_edges import load_and_preprocess_image, calculate_similarity
