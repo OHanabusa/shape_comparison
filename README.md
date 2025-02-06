@@ -8,7 +8,7 @@
 ### 入力画像と比較結果
 | 実験画像 | シミュレーション画像 |　比較結果 |
 |:--------:|:------------------:|:----------------:|
-| ![実験画像](https://github.com/user-attachments/assets/3c40ce97-6591-46e6-b987-96c13f37b8ad)| ![シミュレーション画像](https://github.com/user-attachments/assets/c3b8630f-afd1-4e74-8dab-60f0273d5e1d) |![比較結果](https://github.com/user-attachments/assets/a6e0a075-0319-42d4-891b-3b07b5f9e0a3)|
+| <img src= "https://github.com/user-attachments/assets/3c40ce97-6591-46e6-b987-96c13f37b8ad", width = "100">| ![シミュレーション画像](https://github.com/user-attachments/assets/c3b8630f-afd1-4e74-8dab-60f0273d5e1d) |![比較結果](https://github.com/user-attachments/assets/a6e0a075-0319-42d4-891b-3b07b5f9e0a3)|
 
 
 上記の例では，実験画像とシミュレーション画像のエッジを抽出し，形状の類似度を計算しています．比較結果の画像では，両者のエッジを重ね合わせて視覚的に差異を確認することができます．
