@@ -7,7 +7,7 @@
 ### 入力画像
 | 実験画像 | シミュレーション画像 |
 |:--------:|:------------------:|
-| ![実験画像](https://github.com/user-attachments/assets/3c40ce97-6591-46e6-b987-96c13f37b8ad)| ![シミュレーション画像](gravity.png) |
+| ![実験画像](https://github.com/user-attachments/assets/3c40ce97-6591-46e6-b987-96c13f37b8ad)| ![シミュレーション画像](https://github.com/user-attachments/assets/c3b8630f-afd1-4e74-8dab-60f0273d5e1d) |
 
 ### 比較結果
 ![比較結果](edge_comparison.png)
