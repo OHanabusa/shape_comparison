@@ -1,41 +1,96 @@
-# FEniCS における計算式と得られる形状
+# Shape Comparison Tool
 
-## **1. スカラー (`a`), ベクトル (`\vec{v}`), 行列 (`\boldsymbol{M}`) の定義**
-- **スカラー**: $a, b, c$  （例: `Constant(1.0)`, `FunctionSpace` 内の `Function`）
-- **ベクトル**: $\vec{v}, \vec{w}$  （例: `VectorFunctionSpace` の `Function`）
-- **行列**: $\boldsymbol{M}, \boldsymbol{K}$  （例: `assemble()` で生成された `PETScMatrix`）
+画像の形状（エッジ）を比較し、類似度を計算するためのPythonツールです。実験画像とシミュレーション結果の比較に特化しています。
 
----
+## 特徴
 
-## **2. 計算式と得られる形状**
+- 高度な画像前処理機能
+- 複数の類似度指標を組み合わせた総合評価
+- デバッグ用の可視化機能
+- 画像の部分的な比較機能（クロップ機能）
 
-| **計算式** | **数式表現** | **得られる形状** | **説明** |
-|------------|------------|--------------|--------------|
-| `a * b` | $a \cdot b$ | **スカラー** | スカラー同士の積 |
-| `a * v` | $a \vec{v}$ | **ベクトル** | スカラーとベクトルの積 |
-| `a * M` | $a \boldsymbol{M}$ | **行列** | スカラーと行列の積 |
-| `v + w` | $\vec{v} + \vec{w}$ | **ベクトル** | ベクトルの加算 |
-| `v - w` | $\vec{v} - \vec{w}$ | **ベクトル** | ベクトルの減算 |
-| `\text{dot}(v, w)` | $\vec{v} \cdot \vec{w}$ | **スカラー** | ベクトルの内積 |
-| `\text{cross}(v, w)` | $\vec{v} \times \vec{w}$ | **ベクトル** | ベクトルの外積 (3D のみ) |
-| `\text{inner}(v, w)` | $\vec{v}^T \vec{w}$ | **スカラー** | ベクトルの内積（`dot()` と同じ） |
-| `M * v` | $\boldsymbol{M} \vec{v}$ | **ベクトル** | 行列とベクトルの積 |
-| `M * M` | $\boldsymbol{M} \boldsymbol{M}$ | **行列** | 行列同士の積 |
-| `v^T * M` | $\vec{v}^T \boldsymbol{M}$ | **ベクトル** | ベクトルの転置と行列の積 |
-| `v^T * w` | $\vec{v}^T \vec{w}$ | **スカラー** | ベクトルの転置とベクトルの積 |
-| `\text{inv}(M)` | $\boldsymbol{M}^{-1}$ | **行列** | 行列の逆行列（`solve()` で解く） |
-| `\text{tr}(M)` | $\text{tr}(\boldsymbol{M})$ | **スカラー** | 行列のトレース |
-| `\text{det}(M)` | $\det(\boldsymbol{M})$ | **スカラー** | 行列の行列式 |
-| `\text{norm}(v, "l2")` | $\|\vec{v}\|_2$ | **スカラー** | ベクトルの L2 ノルム |
-| `\text{norm}(M, "frobenius")` | $\|\boldsymbol{M}\|_F$ | **スカラー** | 行列のフロベニウスノルム |
+## 必要条件
 
----
+- Python 3.x
+- OpenCV (cv2)
+- NumPy
+- scikit-image
 
-## **3. 補足**
-- `\text{dot}(v, w)` と `\text{inner}(v, w)` は **スカラーを返す** 。
-- `M * v` は **ベクトルを返す** 。
-- `M * M` は **行列を返す** 。
-- `\text{cross}(v, w)` は **3D のみで有効** 。
-- `\text{inv}(M)` は **直接計算するのではなく、`solve(A, x, b)` を使用するのが推奨** 。
+## インストール
 
----
+```bash
+pip install opencv-python numpy scikit-image
+```
+
+## 使用方法
+
+### 基本的な使用例
+
+```python
+from compare_edges import load_and_preprocess_image, calculate_similarity
+import cv2
+
+# 画像パスの設定
+image1_path = '実験画像.png'
+image2_path = 'シミュレーション画像.png'
+
+# 画像の前処理
+edge_image1 = load_and_preprocess_image(image1_path)
+edge_image2 = load_and_preprocess_image(image2_path)
+
+# 前処理済み画像の読み込み
+img1 = cv2.imread(edge_image1)
+img2 = cv2.imread(edge_image2)
+
+# 類似度の計算
+similarity = calculate_similarity(img1, img2)
+print(f"類似度: {similarity:.2f}%")
+```
+
+### 画像の一部分のみを比較する場合
+
+```python
+# 画像の上20%から下80%までを使用
+crop_ratio = (0.2, 0.8)
+
+edge_image1 = load_and_preprocess_image(image1_path, crop_ratio)
+edge_image2 = load_and_preprocess_image(image2_path, crop_ratio)
+```
+
+## 主要な機能
+
+### 画像前処理 (`load_and_preprocess_image`)
+- グレースケール変換
+- ノイズ除去（ガウシアンブラー）
+- コントラスト強調（CLAHE）
+- Cannyエッジ検出
+- 最大輪郭の抽出
+
+### 類似度計算 (`calculate_similarity`)
+以下の4つの指標を組み合わせて総合的な類似度を算出します：
+
+| 指標 | 重み | 説明 |
+|------|------|------|
+| 面積類似度 | 10% | 二値化画像の面積比 |
+| 周長類似度 | 10% | エッジの長さの比較 |
+| SSIM類似度 | 50% | 構造的類似性指標 |
+| オーバーラップ類似度 | 30% | エッジの重なり具合 |
+
+## 出力ファイル
+
+処理の過程で以下のファイルが自動的に生成されます：
+
+- `debug_[元画像名].png`: エッジ検出過程の可視化結果
+- `edge_only_[元画像名].png`: エッジのみを抽出した画像
+- クロップを指定した場合は、ファイル名に`_cropped`が付加されます
+
+## 注意事項
+
+- 入力画像のサイズは自動的に調整されます
+- 画像の向きや位置が大きく異なる場合、比較精度が低下する可能性があります
+- 類似度は0-100の範囲で出力され、100が完全一致を示します
+- デバッグ用の画像は自動的に保存されます
+
+## ライセンス
+
+MITライセンス
