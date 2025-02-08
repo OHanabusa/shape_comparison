@@ -36,11 +36,9 @@ pip install opencv-python numpy scikit-image
 ## 使用方法
 
 ### 基本的な使用例
+426行目以降
 
 ```python
-from compare_edges import load_and_preprocess_image, calculate_similarity
-import cv2
-
 # 画像パスの設定
 image1_path = '実験画像.png'
 image2_path = 'シミュレーション画像.png'
