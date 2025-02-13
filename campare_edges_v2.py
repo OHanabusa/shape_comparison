@@ -27,11 +27,11 @@ def load_and_preprocess_image(image_path, crop_ratio=None):
     enhanced = clahe.apply(blurred)
     
     # Use Canny edge detection with adjusted thresholds
-    edges = cv2.Canny(enhanced, 20, 80)  # Lower thresholds for better edge detection
+    edges = cv2.Canny(enhanced, 0, 80)  # Lower thresholds for better edge detection
     
     # Dilate edges to connect gaps
-    kernel = np.ones((2,2), np.uint8)
-    dilated = cv2.dilate(edges, kernel, iterations=2)
+    kernel = np.ones((3,3), np.uint8)
+    dilated = cv2.dilate(edges, kernel, iterations=1)
     
     # Find contours with different method
     contours, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -176,7 +176,7 @@ def calculate_similarity(template_gray, target_gray):
     cv2.imwrite("debug_union.png", union)
     
     overlap_count = cv2.countNonZero(overlap)
-    union_count = cv2.countNonZero(target_dilated)
+    union_count = cv2.countNonZero(template_dilated)
     
     # print(f"Debug - Overlap pixels: {overlap_count}")
     # print(f"Debug - Union pixels: {union_count}")
@@ -192,8 +192,8 @@ def calculate_similarity(template_gray, target_gray):
     similarity = (
         area_similarity * 0.1 +      # Increased weight for area
         perimeter_similarity * 0.1 +  # Moderate weight for perimeter
-        ssim_similarity * 0.7 +       # Moderate weight for SSIM
-        overlap_similarity * 0.1      # Increased weight for overlap
+        ssim_similarity * 0.5 +       # Moderate weight for SSIM
+        overlap_similarity * 0.3      # Increased weight for overlap
     )
 
     # Print individual scores for debugging
@@ -317,7 +317,7 @@ def create_comparison_image(template, target, best_template, best_match, positio
 
     return comparison
 
-def find_best_match(template, target, scale_range=(0.5, 1.0, 0.1), step_size=1):
+def find_best_match(template, target, scale_range, step_size=1, search_range=(0.4,0.6)):
     """Find the best matching position and scale of template within target"""
     best_similarity = 0
     best_match = None
@@ -336,8 +336,8 @@ def find_best_match(template, target, scale_range=(0.5, 1.0, 0.1), step_size=1):
     center_x = target_width // 2
     
     # Calculate search range as percentage of target dimensions
-    search_range_y = int(target_height * 0.45)  # 40% of target height
-    search_range_x = int(target_width * 0.45)   # 40% of target width
+    search_range_y = int(target_height * search_range[1])  # 40% of target height
+    search_range_x = int(target_width * search_range[0])   # 40% of target width
     
     for scale in np.arange(scale_range[0], scale_range[1], scale_range[2]):
         print(f"\nChecking scale: {scale}")
@@ -386,11 +386,37 @@ def find_best_match(template, target, scale_range=(0.5, 1.0, 0.1), step_size=1):
                     best_position = (x, y)
                     best_scale = scale
                     
-                    print(f"New best match: Similarity {similarity:.2f}%, Position: ({x}, {y}), Scale: {scale:.2f}")
+                    # Get individual similarity scores
+                    # Convert to grayscale if needed and calculate appropriate window size
+                    template_gray = cv2.cvtColor(best_template, cv2.COLOR_BGR2GRAY) if len(best_template.shape) == 3 else best_template
+                    region_gray = cv2.cvtColor(region, cv2.COLOR_BGR2GRAY) if len(region.shape) == 3 else region
+                    
+                    min_dim = min(template_gray.shape[0], template_gray.shape[1])
+                    win_size = min(7, min_dim - (min_dim % 2 == 0))  # Ensure it's odd and not larger than image
+                    if win_size < 3:
+                        win_size = 3  # Minimum window size of 3
+                    
+                    try:
+                        ssim_score = ssim(template_gray, region_gray, win_size=win_size, data_range=255)
+                    except ValueError:
+                        # If SSIM fails, use a simpler metric
+                        ssim_score = 0
+                        print("Warning: SSIM calculation failed, using 0 as score")
+                    
+                    overlap_score = calculate_overlap_similarity()
+                    
+                    print(f"\nNew best match found!")
+                    print(f"Overall Similarity: {similarity:.2f}%")
+                    print(f"SSIM Score: {ssim_score:.4f}")
+                    print(f"Overlap Score: {overlap_score:.2f}%")
+                    print(f"Position: ({x}, {y})")
+                    print(f"Scale: {scale:.2f}")
                     
                     comparison = create_comparison_image(template, target, best_template, best_match, 
                                                       best_position, best_scale, best_similarity)
                     cv2.imwrite('edge_comparison.png', comparison)
+                    if similarity == 100:
+                        return 100, best_template, best_match, best_position, best_scale
         center_x = best_position[0]
         center_y = best_position[1]
     
@@ -414,11 +440,9 @@ def resize_maintain_aspect(img, max_width, max_height):
         new_w = int(new_h * aspect)
     return cv2.resize(img, (new_w, new_h))
 
-def calculate_overlap_similarity(img1, img2):
-    _, img1_bin = cv2.threshold(img1, 127, 255, cv2.THRESH_BINARY)
-    _, img2_bin = cv2.threshold(img2, 127, 255, cv2.THRESH_BINARY)
-    overlap = cv2.bitwise_and(img1_bin, img2_bin)
-    union = cv2.bitwise_or(img1_bin, img2_bin)
+def calculate_overlap_similarity():
+    overlap = cv2.imread("debug_overlap.png", cv2.IMREAD_GRAYSCALE)
+    union = cv2.imread('debug_template_dilated.png', cv2.IMREAD_GRAYSCALE)
     if cv2.countNonZero(union) > 0:
         overlap_similarity = 100 * cv2.countNonZero(overlap) / cv2.countNonZero(union)
     else:
@@ -431,12 +455,8 @@ image1_path = '17.png'
 #シミュレーション
 image2_path = '52.png'
 
-# print(f"Processing images...")
-# print(f"Image 1: {image1_path} (cropped)")
-# print(f"Image 2: {image2_path}")
-
 # Load and process both images
-contour1 = load_and_preprocess_image(image1_path, crop_ratio=(0.05, 1.0))#上下の切り取り範囲指定
+contour1 = load_and_preprocess_image(image1_path, crop_ratio=(0.1, 0.9))#上下の切り取り範囲指定
 contour2 = load_and_preprocess_image(image2_path)
 
 template = cv2.imread(contour1)
@@ -448,10 +468,23 @@ print(f"Target size: {target.shape}")
 
 # Find best match
 print("\nFinding best match (this may take a while)...")
+
+# Calculate base scale from image sizes
+template_size = max(template.shape[0], template.shape[1])
+target_size = max(target.shape[0], target.shape[1])
+base_scale = target_size / template_size
+
+# Set scale range to ±10% of base scale
+# 自動計算された画像のスケールレンジ
+min_scale = base_scale * 0.8  # -20%
+max_scale = base_scale * 1.2  # +20%
+step = (max_scale - min_scale) / 50  # 10 steps across the range
+
 similarity, best_template, best_match, position, scale = find_best_match(
     template, target, 
-    scale_range=(0.49, 0.55, 0.01),  #捜索するイメージサイズの範囲とステップ幅を設定
-    step_size=1  # 移動ピクセル設定
+    scale_range=(min_scale, max_scale, step),  # Automatically calculated scale range
+    step_size=5 , # 移動ピクセル設定
+    search_range=(0.4,0.6) # 検索範囲設定
 )
 
 print(f"Best match found:")
